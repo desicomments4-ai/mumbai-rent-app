@@ -49,6 +49,11 @@ html, body, [class*="css"] { font-family: Inter, system-ui, -apple-system, Segoe
   background: var(--brand) !important; border:none !important; color:white !important;
   font-weight:700 !important; border-radius: 10px !important; padding: 10px 14px !important;
 }
+.cta-btn a { /* link ko button jaisa style */
+  background: var(--brand) !important; border:none !important; color:white !important;
+  font-weight:700 !important; border-radius: 10px !important; padding: 10px 14px !important;
+  text-decoration:none !important; display:inline-block;
+}
 .cta-caption { color: var(--muted); margin-top: 4px; }
 .metric-card { border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: var(--card); }
 .small { font-size: 12px; color: var(--muted); }
@@ -144,7 +149,12 @@ df["badge"] = df["global_rank"].apply(rank_badge)
 # -------------------------
 st.sidebar.header("Filters")
 zones = sorted(df["zone"].dropna().unique().tolist())
-zone_selected = st.sidebar.multiselect("Zone choose karo", zones, default=zones)
+zone_selected = st.sidebar.multiselect(
+  "Zone choose karo",
+  options=zones,
+  default=[],                       # default empty
+  placeholder="Type to add zones…"  # type to get suggestions
+)
 
 min_r, max_r = int(df["rent_median_1bhk"].min()), int(df["rent_median_1bhk"].max())
 rent_range = st.sidebar.slider("1BHK Median (₹/mo)", min_r, max_r, (min_r, max_r), step=500)
@@ -181,17 +191,13 @@ st.markdown("""
 
 cta_col1, cta_col2 = st.columns([1,3])
 with cta_col1:
-  with st.container():
-    st.markdown('<div class="cta-btn">', unsafe_allow_html=True)
-    if st.button("🏠 Flat chahiye? Submit details"):
-      st.session_state["show_form"] = True
-    st.markdown('</div>', unsafe_allow_html=True)
+  # Direct link to open Google Form in a new tab (iframe removed)
+  st.markdown(
+    f'<div class="cta-btn"><a href="{FORM_URL}" target="_blank" rel="noopener noreferrer">🏠 Flat chahiye? Submit details</a></div>',
+    unsafe_allow_html=True
+  )
 with cta_col2:
   st.markdown('<div class="cta-caption">Phone ya Email – kisi ek se contact. No spam.</div>', unsafe_allow_html=True)
-
-if st.session_state.get("show_form", False):
-  st.markdown("#### ✉️ Rent Help Form")
-  st.components.v1.iframe(FORM_URL, height=680)
 
 # -------------------------
 # METRICS
@@ -214,10 +220,15 @@ with m3:
 # -------------------------
 # FILTER + SORT + TABLE
 # -------------------------
-mask = df["zone"].isin(zone_selected) & df["rent_median_1bhk"].between(*rent_range)
+# Zone filter only when user selected something; otherwise show all
+mask = df["rent_median_1bhk"].between(*rent_range)
+if zone_selected:
+  mask &= df["zone"].isin(zone_selected)
+
 if search.strip():
   s = search.strip().lower()
   mask &= df["area"].str.lower().str.contains(s)
+
 filtered = df.loc[mask].copy()
 
 if group_zone:
